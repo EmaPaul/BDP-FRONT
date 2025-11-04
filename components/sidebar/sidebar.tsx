@@ -73,9 +73,10 @@ export const SidebarWrapper = () => {
                      />
 
                      <SidebarItem
-                        isActive={router.pathname === '/customers'}
+                        isActive={router.pathname === '/clientes'}
                         title="Clientes"
                         icon={<CustomersIcon />}
+                        href="/clientes"
                      />
                      <SidebarItem
                         isActive={router.pathname === '/products'}
