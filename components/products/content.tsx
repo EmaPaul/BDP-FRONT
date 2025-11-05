@@ -41,17 +41,20 @@ export const ProductsContent = () => {
          
          console.log('📊 Productos recibidos de la API:', apiProducts);
          
+         // Si llegamos aquí, la API respondió exitosamente
+         console.log('✅ API conectada exitosamente');
+         setApiConnected(true);
+         setLastUpdated(new Date());
+         
          if (apiProducts && apiProducts.length > 0) {
-            console.log('✅ API conectada exitosamente. Productos encontrados:', apiProducts.length);
+            console.log('📦 Productos encontrados:', apiProducts.length);
             // Convertir productos de API al formato local
             const localProducts = apiProducts.map(mapApiProductToLocal);
             setProducts(localProducts);
-            setApiConnected(true);
-            setLastUpdated(new Date());
          } else {
-            console.log('⚠️ API respondió pero sin productos. Usando datos locales como fallback');
-            setProducts(productsData);
-            setApiConnected(false);
+            console.log('📭 API conectada pero sin productos disponibles');
+            // API conectada pero sin productos - mostrar array vacío
+            setProducts([]);
          }
       } catch (error) {
          console.error('❌ Error conectando a la API:', error);
@@ -248,6 +251,7 @@ export const ProductsContent = () => {
                         isConnected={apiConnected} 
                         isLoading={loading} 
                         lastUpdated={lastUpdated}
+                        productsCount={products.length}
                      />
                   </Box>
                   

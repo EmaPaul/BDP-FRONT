@@ -231,6 +231,41 @@ const columns = [
       {name: 'ACCIONES', uid: 'actions'},
    ];
 
+   // Mostrar mensaje cuando no hay productos
+   if (products.length === 0) {
+      return (
+         <Box
+            css={{
+               display: 'flex',
+               flexDirection: 'column',
+               alignItems: 'center',
+               justifyContent: 'center',
+               minHeight: '300px',
+               textAlign: 'center',
+               py: '$10'
+            }}
+         >
+            <Text
+               h3
+               css={{
+                  color: '$accents7',
+                  mb: '$4'
+               }}
+            >
+               📦 No hay productos disponibles
+            </Text>
+            <Text
+               css={{
+                  color: '$accents6',
+                  maxWidth: '400px'
+               }}
+            >
+               No se encontraron productos en el inventario. Agrega algunos productos para comenzar a gestionar tu inventario.
+            </Text>
+         </Box>
+      );
+   }
+
    return (
       <>
       <Box

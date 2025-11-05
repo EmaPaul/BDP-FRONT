@@ -6,9 +6,10 @@ interface APIStatusProps {
    isConnected: boolean;
    isLoading?: boolean;
    lastUpdated?: Date;
+   productsCount?: number;
 }
 
-export const APIStatus: React.FC<APIStatusProps> = ({ isConnected, isLoading, lastUpdated }) => {
+export const APIStatus: React.FC<APIStatusProps> = ({ isConnected, isLoading, lastUpdated, productsCount }) => {
    return (
       <Flex align="center" css={{ gap: '$3', mb: '$4', mt: '$2' }}>
          {isLoading ? (
@@ -30,7 +31,7 @@ export const APIStatus: React.FC<APIStatusProps> = ({ isConnected, isLoading, la
                
                <Text size="$xs" css={{ color: '$accents7' }}>
                   {isConnected 
-                     ? `Datos desde: api.bebidasdelperu.name${lastUpdated ? ` • ${lastUpdated.toLocaleTimeString()}` : ''}`
+                     ? `Datos desde: api.bebidasdelperu.name${typeof productsCount === 'number' ? ` • ${productsCount} productos` : ''}${lastUpdated ? ` • ${lastUpdated.toLocaleTimeString()}` : ''}`
                      : 'Usando datos de demostración locales'
                   }
                </Text>

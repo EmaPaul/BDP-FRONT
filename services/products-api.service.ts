@@ -97,18 +97,29 @@ class ProductsApiService {
         return response;
       } else if (response && typeof response === 'object') {
         // Formato específico de la API: { message: "...", products: [...] }
-        if ('products' in response && Array.isArray(response.products)) {
-          console.log('✅ Datos recibidos en formato {products: [...]}:', response.products.length, 'productos');
-          return response.products as ApiProduct[];
+        if ('products' in response) {
+          if (Array.isArray(response.products)) {
+            console.log('✅ Datos recibidos en formato {products: [...]}:', response.products.length, 'productos');
+            return response.products as ApiProduct[];
+          } else if (response.products === null || response.products === undefined) {
+            console.log('✅ API respondió con products null/undefined - array vacío');
+            return [];
+          }
         }
         // Formato genérico: { data: [...] }
-        else if ('data' in response && Array.isArray(response.data)) {
-          console.log('✅ Datos recibidos en formato {data: [...]}:', response.data.length, 'productos');
-          return response.data as ApiProduct[];
+        else if ('data' in response) {
+          if (Array.isArray(response.data)) {
+            console.log('✅ Datos recibidos en formato {data: [...]}:', response.data.length, 'productos');
+            return response.data as ApiProduct[];
+          } else if (response.data === null || response.data === undefined) {
+            console.log('✅ API respondió con data null/undefined - array vacío');
+            return [];
+          }
         }
       }
       
-      console.log('⚠️ Formato de respuesta no reconocido:', typeof response, response);
+      console.log('⚠️ Formato de respuesta no reconocido, pero conexión exitosa:', typeof response, response);
+      console.log('🔄 Retornando array vacío para mantener conexión API activa');
       return [];
     } catch (error) {
       console.error('❌ Error conectando a la API:', error);
