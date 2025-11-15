@@ -24,6 +24,8 @@ export const ProductsTable = ({products, onUpdateProduct, onDeleteProduct}: Prop
    const [editingProduct, setEditingProduct] = useState<ProductLocal | null>(null);
    const [showDeleteModal, setShowDeleteModal] = useState(false);
    const [productToDelete, setProductToDelete] = useState<number | null>(null);
+   const [showImageModal, setShowImageModal] = useState(false);
+   const [selectedImage, setSelectedImage] = useState<{src: string, name: string} | null>(null);
 
    const handleEditProduct = (product: ProductLocal) => {
       setEditingProduct(product);
@@ -32,6 +34,11 @@ export const ProductsTable = ({products, onUpdateProduct, onDeleteProduct}: Prop
    const handleDeleteProduct = (productId: number) => {
       setProductToDelete(productId);
       setShowDeleteModal(true);
+   };
+
+   const handleImageClick = (imageSrc: string, productName: string) => {
+      setSelectedImage({src: imageSrc, name: productName});
+      setShowImageModal(true);
    };
 
    const confirmDelete = async () => {
@@ -56,7 +63,18 @@ export const ProductsTable = ({products, onUpdateProduct, onDeleteProduct}: Prop
                         backgroundColor: '$accents1',
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        transition: 'transform 0.2s ease',
+                        '&:hover': {
+                           transform: 'scale(1.1)',
+                           boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                        }
+                     }}
+                     onClick={() => {
+                        if (product.image && (product.image.startsWith('data:') || product.image.startsWith('/') || product.image.startsWith('http'))) {
+                           handleImageClick(product.image, product.name);
+                        }
                      }}
                   >
                      {product.image && (product.image.startsWith('data:') || product.image.startsWith('/') || product.image.startsWith('http')) ? (
@@ -352,6 +370,44 @@ const columns = [
                Eliminar
             </Button>
          </Modal.Footer>
+      </Modal>
+
+      {/* Modal de imagen ampliada */}
+      <Modal
+         closeButton
+         aria-labelledby="image-modal-title"
+         open={showImageModal}
+         onClose={() => setShowImageModal(false)}
+         width="auto"
+         css={{
+            maxWidth: '90vw',
+            maxHeight: '90vh'
+         }}
+      >
+         <Modal.Header>
+            <Text id="image-modal-title" size={18} css={{ color: '#034F32', fontWeight: '$bold' }}>
+               {selectedImage?.name || 'Imagen del Producto'}
+            </Text>
+         </Modal.Header>
+         <Modal.Body css={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: '$10'
+         }}>
+            {selectedImage && (
+               <img 
+                  src={selectedImage.src} 
+                  alt={selectedImage.name}
+                  style={{
+                     maxWidth: '100%',
+                     maxHeight: '70vh',
+                     objectFit: 'contain',
+                     borderRadius: '8px'
+                  }}
+               />
+            )}
+         </Modal.Body>
       </Modal>
       </>
    );
