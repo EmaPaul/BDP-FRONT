@@ -11,6 +11,7 @@ import React, { useState } from 'react';
 import {Flex} from '../styles/flex';
 import {Box} from '../styles/box';
 import {ProductLocal} from './data';
+import {productsApiService} from '../../services/products-api.service';
 
 interface AddProductModalProps {
    visible: boolean;
@@ -100,22 +101,66 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       }
    };
 
-   const createProductInAPI = async (productData: FormData) => {
+   const createProductInAPI = async (productData: any, imageFile: File | null) => {
       try {
-         const response = await fetch('https://api.bebidasdelperu.name/api/products', {
+         console.log('📤 Enviando producto a la API:', productData);
+         
+         // Crear FormData para enviar el archivo correctamente
+         const formData = new FormData();
+         formData.append('nombre', productData.nombre);
+         formData.append('descripcion', productData.descripcion);
+         formData.append('presentacion', productData.presentacion);
+         formData.append('precioUnitario', productData.precioUnitario.toString());
+         formData.append('precioMayorista', productData.precioMayorista.toString());
+         formData.append('stock', productData.stock.toString());
+         
+         // Agregar archivo si existe
+         if (imageFile) {
+            console.log('📸 Archivo de imagen agregado:', imageFile.name);
+            formData.append('urlImage', imageFile);
+         }
+
+         // Hacer la petición directamente sin usar el servicio (para enviar FormData)
+         const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL + '/products';
+         console.log('🔗 URL completa de la petición:', apiUrl);
+         
+         const response = await fetch(apiUrl, {
             method: 'POST',
-            body: productData,
+            mode: 'cors',
+            body: formData,
+            headers: {
+               'Accept': 'application/json',
+            }
          });
 
-         const result = await response.json();
+         console.log('📊 Status de respuesta:', response.status);
+         console.log('📊 Content-Type:', response.headers.get('content-type'));
+         
+         // Obtener el texto de respuesta primero
+         const responseText = await response.text();
+         console.log('📝 Respuesta del servidor (raw):', responseText);
 
+         // Verificar si es JSON válido
+         let result;
+         try {
+            result = JSON.parse(responseText);
+         } catch (e) {
+            console.error('❌ La respuesta no es JSON válido:', responseText.substring(0, 200));
+            throw new Error(`Error del servidor (${response.status}): La respuesta no es JSON válido. Verifica los logs del backend.`);
+         }
+
+         console.log('🔍 Resultado de createProduct:', result);
+
+         // Verificar si la respuesta indica error
          if (!response.ok) {
-            // Manejo específico de errores de validación de Laravel
-            if (result.errors) {
-               const errorMessages = Object.values(result.errors).flat().join(', ');
-               throw new Error(`Errores de validación: ${errorMessages}`);
-            }
-            throw new Error(result.message || `Error ${response.status}: ${response.statusText}`);
+            console.error('❌ Error en la respuesta:', result);
+            throw new Error(result?.message || `Error del servidor (${response.status})`);
+         }
+
+         // Aceptar cualquier resultado que no sea null/undefined
+         if (result === null || result === undefined) {
+            console.error('❌ API retornó null/undefined');
+            throw new Error('La API no retornó datos válidos');
          }
 
          console.log('✅ Producto creado exitosamente:', result);
@@ -140,24 +185,20 @@ export const AddProductModal: React.FC<AddProductModalProps> = ({
       setIsLoading(true);
       
       try {
-         // Crear FormData para enviar a la API de Laravel
-         const apiFormData = new FormData();
-         apiFormData.append('nombre', formData.name);
-         apiFormData.append('descripcion', formData.description || 'Sin descripción');
-         apiFormData.append('presentacion', formData.presentation);
-         apiFormData.append('precioUnitario', formData.precio_unitario);
-         apiFormData.append('precioMayorista', formData.precio_mayorista);
-         apiFormData.append('stock', formData.stock);
+         // Preparar datos para la API
+         const apiData = {
+            nombre: formData.name,
+            descripcion: formData.description || 'Sin descripción',
+            presentacion: formData.presentation,
+            precioUnitario: parseFloat(formData.precio_unitario),
+            precioMayorista: parseFloat(formData.precio_mayorista),
+            stock: parseInt(formData.stock)
+         };
 
-         // Agregar imagen si existe
-         if (imageFile) {
-            apiFormData.append('urlImage', imageFile);
-         }
-
-         console.log('📤 Enviando datos a la API...');
+         console.log('📤 Enviando datos a la API...', apiData);
          
-         // Enviar a la API
-         const apiResult = await createProductInAPI(apiFormData);
+         // Enviar a la API con el archivo real
+         const apiResult = await createProductInAPI(apiData, imageFile);
          
          // También crear el producto local para la tabla
          const newProduct: Omit<ProductLocal, 'id'> = {

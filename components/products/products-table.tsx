@@ -72,12 +72,12 @@ export const ProductsTable = ({products, onUpdateProduct, onDeleteProduct}: Prop
                         }
                      }}
                      onClick={() => {
-                        if (product.image && (product.image.startsWith('data:') || product.image.startsWith('/') || product.image.startsWith('http'))) {
+                        if (product.image && product.image !== '/images/products/default.jpg') {
                            handleImageClick(product.image, product.name);
                         }
                      }}
                   >
-                     {product.image && (product.image.startsWith('data:') || product.image.startsWith('/') || product.image.startsWith('http')) ? (
+                     {product.image && product.image !== '/images/products/default.jpg' ? (
                         <img 
                            src={product.image} 
                            alt={product.name}
@@ -85,6 +85,10 @@ export const ProductsTable = ({products, onUpdateProduct, onDeleteProduct}: Prop
                               width: '100%',
                               height: '100%',
                               objectFit: 'cover'
+                           }}
+                           onError={(e) => {
+                              console.error(`Error cargando imagen: ${product.image}`);
+                              (e.target as HTMLImageElement).style.display = 'none';
                            }}
                         />
                      ) : (

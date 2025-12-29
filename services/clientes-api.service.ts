@@ -211,7 +211,7 @@ class ClientesApiService {
 
       // Adaptar datos al formato esperado por la API real
       const clienteData = {
-         tipoCliente: 'Mayorista',
+         tipoCliente: 'mayorista',
          nombre: data.nombre,
          apellidos: data.apellidos,
          ruc: data.ruc,
@@ -394,7 +394,7 @@ class ClientesApiService {
 
       // Adaptar datos al formato esperado por la API real
       const clienteData = {
-         tipoCliente: 'Minorista',
+         tipoCliente: 'minorista',
          nombre: data.nombres,
          apellidos: data.apellidos,
          dni: data.dni,
@@ -465,7 +465,7 @@ class ClientesApiService {
          const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos timeout
          
          // Intentar conectar solo al dominio base
-         const response = await fetch('https://api.bebidasdelperu.name', {
+         const response = await fetch('https://bebidasdelperuapp.com', {
             method: 'GET',
             signal: controller.signal,
             mode: 'no-cors' // Permite verificar si el servidor responde
@@ -611,6 +611,44 @@ class ClientesApiService {
    // Obtener cliente por ID
    async obtenerClientePorId(id: string): Promise<any> {
       return await this.makeRequest(`/client/${id}`, 'GET');
+   }
+
+   // Actualizar cliente
+   async actualizarCliente(id: string, clienteData: any): Promise<any> {
+      try {
+         console.log(`📤 Actualizando cliente ID: ${id}`, clienteData);
+         
+         const result = await this.makeRequest(`/client/${id}`, 'PUT', clienteData);
+         
+         console.log('✅ Cliente actualizado exitosamente:', result);
+         return {
+            success: true,
+            message: result?.message || 'Cliente actualizado exitosamente',
+            data: result.data || result
+         };
+      } catch (error) {
+         console.error('❌ Error al actualizar cliente:', error);
+         throw error;
+      }
+   }
+
+   // Eliminar cliente
+   async eliminarCliente(id: string): Promise<any> {
+      try {
+         console.log(`📤 Eliminando cliente ID: ${id}`);
+         
+         const result = await this.makeRequest(`/client/${id}`, 'DELETE');
+         
+         console.log('✅ Cliente eliminado exitosamente:', result);
+         return {
+            success: true,
+            message: result?.message || 'Cliente eliminado exitosamente',
+            data: result.data || result
+         };
+      } catch (error) {
+         console.error('❌ Error al eliminar cliente:', error);
+         throw error;
+      }
    }
 
    // Método de diagnóstico detallado

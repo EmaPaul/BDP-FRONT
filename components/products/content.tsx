@@ -69,9 +69,15 @@ export const ProductsContent = () => {
 
    // Filtrar productos basado en búsqueda y estado
    const filteredProducts = products.filter(product => {
-      const matchesSearch = product.name.toLowerCase().includes(searchValue.toLowerCase()) ||
-                          product.description.toLowerCase().includes(searchValue.toLowerCase()) ||
-                          product.category.toLowerCase().includes(searchValue.toLowerCase());
+      // Validar que el producto tenga las propiedades necesarias
+      if (!product || !product.name) {
+         console.warn('⚠️ Producto sin propiedades requeridas:', product);
+         return false;
+      }
+
+      const matchesSearch = (product.name || '').toLowerCase().includes(searchValue.toLowerCase()) ||
+                          (product.description || '').toLowerCase().includes(searchValue.toLowerCase()) ||
+                          (product.category || '').toLowerCase().includes(searchValue.toLowerCase());
       
       const matchesStatus = filterStatus === 'todos' || product.status === filterStatus;
       
@@ -91,34 +97,48 @@ export const ProductsContent = () => {
       console.log('🚀 Iniciando proceso de agregar producto:', newProductData);
       
       try {
+         // Validar que el producto tenga las propiedades necesarias
+         if (!newProductData.name || !newProductData.presentation) {
+            console.error('❌ Datos incompletos del producto:', newProductData);
+            alert('Error: Faltan datos requeridos del producto');
+            return;
+         }
+
+         // Asegurar que todas las propiedades existan con valores por defecto
+         const sanitizedProduct: Omit<ProductLocal, 'id'> = {
+            name: newProductData.name || '',
+            description: newProductData.description || 'Sin descripción',
+            presentation: newProductData.presentation || '',
+            precio_unitario: newProductData.precio_unitario || 0,
+            precio_mayorista: newProductData.precio_mayorista || 0,
+            stock: newProductData.stock || 0,
+            image: newProductData.image || '/images/products/default.jpg',
+            category: newProductData.category || 'Gaseosas',
+            status: newProductData.status || 'Disponible'
+         };
+
          // Convertir datos locales al formato de la API
          const apiProductData: any = {
-            nombre: newProductData.name,
-            descripcion: newProductData.description || 'Sin descripción',
-            presentacion: newProductData.presentation,
-            precioUnitario: newProductData.precio_unitario,
-            precioMayorista: newProductData.precio_mayorista,
-            stock: newProductData.stock
+            nombre: sanitizedProduct.name,
+            descripcion: sanitizedProduct.description,
+            presentacion: sanitizedProduct.presentation,
+            precioUnitario: sanitizedProduct.precio_unitario,
+            precioMayorista: sanitizedProduct.precio_mayorista,
+            stock: sanitizedProduct.stock,
+            urlImage: sanitizedProduct.image || 'https://via.placeholder.com/150x150.png?text=Sin+Imagen'
          };
-         
-         // Solo agregar urlImage si tenemos una imagen válida
-         if (newProductData.image && newProductData.image !== '/images/products/default.jpg') {
-            apiProductData.urlImage = newProductData.image;
-         } else {
-            // Usar una URL de imagen por defecto o placeholder
-            apiProductData.urlImage = 'https://via.placeholder.com/150x150.png?text=Sin+Imagen';
-         }
 
          console.log('🔄 Enviando producto a la API:', apiProductData);
          const newProduct = await productsApiService.createProduct(apiProductData);
          
          if (newProduct) {
             console.log('✅ Producto creado exitosamente en la API:', newProduct);
-            // Convertir el producto de API a formato local antes de agregarlo
-            const localProduct = mapApiProductToLocal(newProduct);
+            // Agregar el producto local directamente sin convertir
             setProducts(prev => {
-               console.log('📋 Actualizando lista de productos local');
-               return [...prev, localProduct];
+               console.log('📋 Agregando producto a lista local');
+               const updatedList = [...prev, sanitizedProduct];
+               console.log('📊 Total de productos después de agregar:', updatedList.length);
+               return updatedList;
             });
             
             // Recargar productos desde la API para asegurar sincronización

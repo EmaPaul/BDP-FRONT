@@ -1,5 +1,7 @@
 // Servicio para la API real de productos de Bebidas del Perú
-const API_BASE_URL = 'https://api.bebidasdelperu.name/api';
+import { API_CONFIG } from '../config/api.config';
+
+const API_BASE_URL = API_CONFIG.BASE_URL;
 
 export interface ApiProduct {
   idProducto: number;
@@ -60,24 +62,44 @@ class ProductsApiService {
         headers: Object.fromEntries(response.headers.entries())
       });
       
-      if (!response.ok) {
-        // Intentar leer el cuerpo del error para más detalles
-        let errorBody;
+      // Intentar leer el JSON sin importar el status code
+      let data;
+      try {
+        data = await response.json();
+        console.log('✅ JSON parseado exitosamente:', data);
+      } catch (jsonError) {
+        console.error('❌ No se pudo parsear JSON:', jsonError);
+        // Si no es JSON, intentar como texto
         try {
-          errorBody = await response.text();
-          console.log('❌ Cuerpo del error:', errorBody);
+          const text = await response.text();
+          console.log('📄 Respuesta como texto:', text);
+          if (!response.ok) {
+            throw new Error(`Error ${response.status}: ${response.statusText} - ${text}`);
+          }
+          return {} as T; // Retornar objeto vacío si no hay JSON
         } catch (e) {
-          console.log('❌ No se pudo leer el cuerpo del error');
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
         }
-        
-        throw new Error(`Error ${response.status}: ${response.statusText}${errorBody ? ` - ${errorBody}` : ''}`);
+      }
+      
+      // Si el status NO es ok pero tenemos datos JSON, aún retornar los datos
+      if (!response.ok) {
+        console.warn(`⚠️ Status ${response.status} pero datos disponibles:`, data);
+        // Retornar los datos de todos modos si el JSON es válido
+        return data;
       }
 
-      const data = await response.json();
-      console.log('✅ Datos recibidos exitosamente:', data);
       return data;
     } catch (error) {
-      console.error('💥 Error en petición API:', error);
+      if (error instanceof TypeError && error.message.includes('Failed to fetch')) {
+        console.error('💥 Error CORS o conexión de red. Detalles:', {
+          url,
+          message: error.message,
+          sugerencia: 'La API puede no tener CORS habilitado o no estar disponible'
+        });
+      } else {
+        console.error('💥 Error en petición API:', error);
+      }
       throw error;
     }
   }
@@ -153,24 +175,48 @@ class ProductsApiService {
         body: JSON.stringify(productData),
       });
 
-      console.log('📦 Respuesta del servidor al crear producto:', response);
+      console.log('📦 Respuesta completa del servidor al crear producto:', response);
+      console.log('📦 Tipo de respuesta:', typeof response);
+
+      // Si la respuesta es null o undefined, es un error
+      if (!response) {
+        console.error('❌ API retornó respuesta vacía');
+        throw new Error('La API no retornó datos válidos');
+      }
 
       // Manejar diferentes formatos de respuesta
-      if (response && typeof response === 'object') {
-        if ('data' in response) {
+      if (typeof response === 'object') {
+        // Formato: { data: {...} }
+        if ('data' in response && response.data) {
           console.log('✅ Producto creado exitosamente (formato data):', response.data);
           return response.data as ApiProduct;
-        } else if ('product' in response) {
+        } 
+        // Formato: { product: {...} }
+        else if ('product' in response && response.product) {
           console.log('✅ Producto creado exitosamente (formato product):', response.product);
           return response.product as ApiProduct;
-        } else if ('idProducto' in response) {
+        } 
+        // Formato directo: { idProducto, nombre, ... }
+        else if ('idProducto' in response) {
           console.log('✅ Producto creado exitosamente (formato directo):', response);
           return response as ApiProduct;
         }
+        // Formato: { id, idProducto, ... } - variaciones
+        else if ('id' in response || 'nombre' in response) {
+          console.log('✅ Producto creado exitosamente (formato alternativo):', response);
+          return response as ApiProduct;
+        }
+        // Si tiene message de éxito pero sin datos
+        else if ('message' in response) {
+          console.log('⚠️ API respondió con mensaje:', response.message);
+          // Retornar la respuesta como está si tiene al menos un message
+          return response as any;
+        }
       }
       
-      console.log('⚠️ Formato de respuesta no reconocido al crear:', response);
-      return null;
+      console.warn('⚠️ Formato de respuesta no reconocido al crear:', response);
+      // Retornar la respuesta como está si llegó a este punto sin errores
+      return response as any;
     } catch (error) {
       console.error('❌ Error creando producto:', error);
       throw error;

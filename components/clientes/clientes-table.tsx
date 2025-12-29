@@ -11,6 +11,7 @@ import {
    Spacer,
    Card,
    Loading,
+   Modal,
 } from '@nextui-org/react';
 import { Flex } from '../styles/flex';
 import { Cliente, TipoCliente, ClienteMayorista, ClienteMinorista } from '../../types/clientes';
@@ -32,6 +33,13 @@ export const ClientesTable = ({ tipoCliente, apiConnected }: Props) => {
    // Estados para paginación
    const [currentPage, setCurrentPage] = useState(1);
    const itemsPerPage = 6;
+
+   // Estados para modales
+   const [visibleModalDetalles, setVisibleModalDetalles] = useState(false);
+   const [visibleModalEditar, setVisibleModalEditar] = useState(false);
+   const [clienteSeleccionado, setClienteSeleccionado] = useState<ClienteAPIReal | null>(null);
+   const [editandoCliente, setEditandoCliente] = useState<ClienteAPIReal | null>(null);
+   const [loadingEdicion, setLoadingEdicion] = useState(false);
 
    // Cargar clientes desde la API
    useEffect(() => {
@@ -97,14 +105,59 @@ export const ClientesTable = ({ tipoCliente, apiConnected }: Props) => {
 
    const handleEdit = (cliente: ClienteAPIReal) => {
       console.log('Editar cliente:', cliente);
+      setClienteSeleccionado(cliente);
+      setEditandoCliente({ ...cliente });
+      setVisibleModalEditar(true);
    };
 
-   const handleDelete = (cliente: ClienteAPIReal) => {
-      console.log('Eliminar cliente:', cliente);
+   const handleDelete = async (cliente: ClienteAPIReal) => {
+      if (window.confirm(`¿Está seguro de que desea eliminar a ${cliente.nombre}?`)) {
+         try {
+            await clientesApiService.eliminarCliente(cliente.idCliente.toString());
+            alert('Cliente eliminado exitosamente');
+            await recargarDatos();
+         } catch (error: any) {
+            alert(`Error al eliminar: ${error.message}`);
+         }
+      }
    };
 
    const handleView = (cliente: ClienteAPIReal) => {
       console.log('Ver detalles del cliente:', cliente);
+      setClienteSeleccionado(cliente);
+      setVisibleModalDetalles(true);
+   };
+
+   // Guardar cambios del cliente editado
+   const guardarCambiosCliente = async () => {
+      if (!editandoCliente) return;
+      
+      setLoadingEdicion(true);
+      try {
+         console.log('Guardando cambios del cliente:', editandoCliente);
+         await clientesApiService.actualizarCliente(
+            editandoCliente.idCliente.toString(),
+            editandoCliente
+         );
+         alert('Cliente actualizado exitosamente');
+         setVisibleModalEditar(false);
+         setEditandoCliente(null);
+         await recargarDatos();
+      } catch (error: any) {
+         alert(`Error al actualizar: ${error.message}`);
+      } finally {
+         setLoadingEdicion(false);
+      }
+   };
+
+   // Actualizar campos del cliente siendo editado
+   const actualizarCampoEdicion = (campo: string, valor: any) => {
+      if (editandoCliente) {
+         setEditandoCliente({
+            ...editandoCliente,
+            [campo]: valor
+         });
+      }
    };
 
    const renderCell = (cliente: ClienteAPIReal, columnKey: React.Key) => {
@@ -395,6 +448,194 @@ export const ClientesTable = ({ tipoCliente, apiConnected }: Props) => {
                </Text>
             </Flex>
          )}
+
+         {/* MODAL DE DETALLES */}
+         <Modal
+            closeButton
+            aria-labelledby="modal-detalles"
+            open={visibleModalDetalles}
+            onClose={() => {
+               setVisibleModalDetalles(false);
+               setClienteSeleccionado(null);
+            }}
+            width="600px"
+         >
+            <Modal.Header css={{ fontSize: '20px', fontWeight: '$bold' }}>
+               Detalles del Cliente
+            </Modal.Header>
+            <Modal.Body css={{ py: '$10' }}>
+               {clienteSeleccionado && (
+                  <Flex direction="column" css={{ gap: '$4' }}>
+                     {clienteSeleccionado.tipoCliente === 'Mayorista' ? (
+                        <>
+                           <Flex direction="column" css={{ gap: '$2' }}>
+                              <Text size={14} color="warning" weight="bold">RUC</Text>
+                              <Text>{clienteSeleccionado.ruc}</Text>
+                           </Flex>
+                           <Flex direction="column" css={{ gap: '$2' }}>
+                              <Text size={14} color="warning" weight="bold">Razón Social</Text>
+                              <Text>{clienteSeleccionado.razonSocial || clienteSeleccionado.razon_social}</Text>
+                           </Flex>
+                        </>
+                     ) : (
+                        <>
+                           <Flex direction="column" css={{ gap: '$2' }}>
+                              <Text size={14} color="warning" weight="bold">DNI</Text>
+                              <Text>{clienteSeleccionado.dni}</Text>
+                           </Flex>
+                           <Flex direction="column" css={{ gap: '$2' }}>
+                              <Text size={14} color="warning" weight="bold">Nombres</Text>
+                              <Text>{clienteSeleccionado.nombre}</Text>
+                           </Flex>
+                           <Flex direction="column" css={{ gap: '$2' }}>
+                              <Text size={14} color="warning" weight="bold">Apellidos</Text>
+                              <Text>{clienteSeleccionado.apellidos}</Text>
+                           </Flex>
+                        </>
+                     )}
+                     
+                     <Flex direction="column" css={{ gap: '$2' }}>
+                        <Text size={14} color="warning" weight="bold">Dirección</Text>
+                        <Text>{clienteSeleccionado.direccion}</Text>
+                     </Flex>
+
+                     <Flex direction="column" css={{ gap: '$2' }}>
+                        <Text size={14} color="warning" weight="bold">Teléfonos</Text>
+                        {clienteSeleccionado.telefonos && clienteSeleccionado.telefonos.length > 0 ? (
+                           <Flex direction="column" css={{ gap: '$1' }}>
+                              {clienteSeleccionado.telefonos.map((tel, index) => (
+                                 <Text key={index}>
+                                    • {tel.numero || tel.number} - {tel.description}
+                                 </Text>
+                              ))}
+                           </Flex>
+                        ) : (
+                           <Text>Sin teléfonos registrados</Text>
+                        )}
+                     </Flex>
+
+                     <Flex direction="column" css={{ gap: '$2' }}>
+                        <Text size={14} color="warning" weight="bold">Tipo de Cliente</Text>
+                        <Badge color="success" variant="flat">
+                           {clienteSeleccionado.tipoCliente}
+                        </Badge>
+                     </Flex>
+
+                     <Flex direction="column" css={{ gap: '$2' }}>
+                        <Text size={14} color="warning" weight="bold">Fecha de Registro</Text>
+                        <Text>{new Date(clienteSeleccionado.created_at).toLocaleDateString('es-PE', { year: 'numeric', month: 'long', day: 'numeric' })}</Text>
+                     </Flex>
+                  </Flex>
+               )}
+            </Modal.Body>
+         </Modal>
+
+         {/* MODAL DE EDICIÓN */}
+         <Modal
+            closeButton
+            aria-labelledby="modal-editar"
+            open={visibleModalEditar}
+            onClose={() => {
+               setVisibleModalEditar(false);
+               setEditandoCliente(null);
+            }}
+            width="600px"
+         >
+            <Modal.Header css={{ fontSize: '20px', fontWeight: '$bold' }}>
+               Editar Cliente
+            </Modal.Header>
+            <Modal.Body css={{ py: '$10' }}>
+               {editandoCliente && (
+                  <Flex direction="column" css={{ gap: '$4' }}>
+                     {editandoCliente.tipoCliente === 'Mayorista' ? (
+                        <>
+                           <Flex direction="column" css={{ gap: '$1' }}>
+                              <Text size={14} weight="bold">RUC</Text>
+                              <Input
+                                 fullWidth
+                                 bordered
+                                 value={editandoCliente.ruc || ''}
+                                 onChange={(e) => actualizarCampoEdicion('ruc', e.target.value)}
+                                 disabled
+                              />
+                           </Flex>
+                           <Flex direction="column" css={{ gap: '$1' }}>
+                              <Text size={14} weight="bold">Razón Social</Text>
+                              <Input
+                                 fullWidth
+                                 bordered
+                                 value={editandoCliente.razonSocial || ''}
+                                 onChange={(e) => actualizarCampoEdicion('razonSocial', e.target.value)}
+                              />
+                           </Flex>
+                        </>
+                     ) : (
+                        <>
+                           <Flex direction="column" css={{ gap: '$1' }}>
+                              <Text size={14} weight="bold">DNI</Text>
+                              <Input
+                                 fullWidth
+                                 bordered
+                                 value={editandoCliente.dni || ''}
+                                 onChange={(e) => actualizarCampoEdicion('dni', e.target.value)}
+                                 disabled
+                              />
+                           </Flex>
+                           <Flex direction="column" css={{ gap: '$1' }}>
+                              <Text size={14} weight="bold">Nombres</Text>
+                              <Input
+                                 fullWidth
+                                 bordered
+                                 value={editandoCliente.nombre || ''}
+                                 onChange={(e) => actualizarCampoEdicion('nombre', e.target.value)}
+                              />
+                           </Flex>
+                           <Flex direction="column" css={{ gap: '$1' }}>
+                              <Text size={14} weight="bold">Apellidos</Text>
+                              <Input
+                                 fullWidth
+                                 bordered
+                                 value={editandoCliente.apellidos || ''}
+                                 onChange={(e) => actualizarCampoEdicion('apellidos', e.target.value)}
+                              />
+                           </Flex>
+                        </>
+                     )}
+
+                     <Flex direction="column" css={{ gap: '$1' }}>
+                        <Text size={14} weight="bold">Dirección</Text>
+                        <Input
+                           fullWidth
+                           bordered
+                           value={editandoCliente.direccion || ''}
+                           onChange={(e) => actualizarCampoEdicion('direccion', e.target.value)}
+                        />
+                     </Flex>
+                  </Flex>
+               )}
+            </Modal.Body>
+            <Modal.Footer>
+               <Button
+                  auto
+                  flat
+                  color="default"
+                  onPress={() => {
+                     setVisibleModalEditar(false);
+                     setEditandoCliente(null);
+                  }}
+               >
+                  Cancelar
+               </Button>
+               <Button
+                  auto
+                  color="success"
+                  loading={loadingEdicion}
+                  onPress={guardarCambiosCliente}
+               >
+                  Guardar Cambios
+               </Button>
+            </Modal.Footer>
+         </Modal>
       </Card>
    );
 };
